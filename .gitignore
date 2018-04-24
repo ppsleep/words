@@ -1,0 +1,13 @@
+.DS_Store
+.git
+*.swp
+*.back
+*.swo
+*.log
+*.lock
+node_modules/
+.settings/org.eclipse.php.core.prefs
+.project 
+.buildpath
+config.js
+package-lock.json

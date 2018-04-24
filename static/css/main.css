@@ -1,0 +1,31 @@
+body {
+    background: #f5f7f9;
+}
+.page-main ul.ivu-menu li:first-child {
+    margin-left: 100px;
+}
+.add-word {
+    width: 70%;
+    margin: 50px auto;
+}
+.result {
+    width: 70%;
+    margin: auto;
+    font-size: 14px;
+}
+.result p {
+    margin: 10px 0;
+}
+.result h2 {
+    margin-bottom: 15px;
+}
+.explains {
+    margin-top: 20px;
+}
+.search-btn {
+    float: right;
+}
+.sub-add {
+    margin-top: 15px;
+    float: right;
+}
