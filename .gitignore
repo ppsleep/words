@@ -11,3 +11,6 @@ node_modules/
 .buildpath
 config.js
 package-lock.json
+src/main/db.db
+static/mp3/*/
+static/mp3/*/*.mp3

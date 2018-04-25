@@ -24,25 +24,26 @@
                 </Row>
             </i-form>
         </div>
-        <div v-if="view.transok" class="result">
-            <h2>good</h2>
+        <div v-if="view.result" class="result">
+            <h2>{{ trans.query }}</h2>
             <p>
                 <Row>
                     <i-col span="12">
-                    <Button type="primary" shape="circle" size="small" icon="volume-medium"></Button> 英  ['fɔːmæt]
+                    <Button type="primary" shape="circle" size="small" icon="volume-medium" @click="voice('uk-speech')"></Button> 英  [{{ trans.uk_phonetic }}]
+                    <audio id="uk-speech" v-bind:src="trans.uk_speech"></audio>
                     </i-col>
                     <i-col span="12">
-                    <Button type="primary" shape="circle" size="small" icon="volume-medium"></Button> 美  ['fɔːmæt]
+                    <Button type="primary" shape="circle" size="small" icon="volume-medium" @click="voice('us-speech')"></Button> 美  [{{ trans.us_phonetic }}]
+                    <audio id="us-speech" v-bind:src="trans.us_speech"></audio>
                     </i-col>
                 </Row>
             </p>
             <div class="explains">
-            <p>n. 格式；版式；开本</p>
-            <p>n. 格式；版式；开本</p>
+            <p v-for="item in trans.explains">{{ item }}</p>
             </div>
             <Row>
                 <i-col span="22">
-                    <Button type="primary" class="sub-add" icon="plus-circled">确认添加到生词本</Button>
+                    <Button type="primary" :disabled="trans.exist" class="sub-add" icon="plus-circled" @click="addWords()">{{ trans.btn }}</Button>
                 </i-col>
             </Row>
         </div>
@@ -64,7 +65,18 @@
                 view: {
                     dashboard: false,
                     mark: true,
-                    transok: true,
+                    result: false,
+                },
+                trans: {
+                    exist: false,
+                    btn: '添加到生词本',
+                    query: '',
+                    us_phonetic: '',
+                    uk_phonetic: '',
+                    us_speech: '',
+                    uk_speech: '',
+                    explains: [],
+                    data: '',
                 },
                 onsubmit: false,
                 interval: null,
@@ -78,17 +90,25 @@
                 this.view[name] = true;
             },
             handleSubmit(name) {
-                console.log(this.x, this.$x)
                 this.$refs[name].validate((valid) => {
                     if (valid) {
                         this.onsubmit = true;
-                        this.$electron.ipcRenderer.send('add-word', this.formInline.word)
+                        this.$electron.ipcRenderer.send('query-word', this.formInline.word)
                         this.interval = setTimeout(this.checkNet, 8000);
-                        //this.$Message.success('Success!');
                     } else {
-                        this.$Message.error('Fail!');
+                        this.$Message.error('请输入正确的单词');
                     }
                 })
+            },
+            voice(id) {
+                document.getElementById(id).play()
+            },
+            addWords() {
+                if (!this.trans.data) {
+                    this.$Message.error('请求错误，请尝试重新查询');
+                } else {
+                    this.$electron.ipcRenderer.send('add-word', this.trans.data)
+                }
             },
             checkNet() {
                 this.$Message.error('请求超时，请检查网络连接');
@@ -96,15 +116,36 @@
             },
         },
         mounted () {
-            this.$electron.ipcRenderer.on('add-result', (event, arg) => {
-                var msg = this.$Message;
+            this.$electron.ipcRenderer.on('query-result', (event, arg) => {
                 if (arg.status === 0) {
-                    
+                    this.trans.data = arg;
+                    this.trans.query = arg.word;
+                    this.trans.us_phonetic = arg.us_phonetic;
+                    this.trans.uk_phonetic = arg.uk_phonetic;
+                    this.trans.us_speech = arg.us_speech;
+                    this.trans.uk_speech = arg.uk_speech;
+                    this.trans.explains = arg.explains;
+                    this.trans.exist = arg.exist;
+                    if (arg.exist) {
+                        this.trans.btn = '生词本已存在';
+                    } else {
+                        this.trans.btn = '添加到生词本';
+                    }
+                    this.view.result = true;
                 } else if (arg.status === 1) {
-                    msg.error(arg.msg);
+                    this.$Message.error(arg.msg);
                 }
                 clearInterval(this.interval)
                 this.onsubmit = false;
+            });
+            this.$electron.ipcRenderer.on('add-result', (event, arg) => {
+                if (arg.status === 0) {
+                    this.$Message.success(arg.msg);
+                    this.trans.exist = true;
+                } else {
+                    this.$Message.error(arg.msg);
+                    this.trans.exist = false;
+                }
             });
         },
     }
