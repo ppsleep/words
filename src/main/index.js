@@ -10,9 +10,23 @@ let fs = require('fs');
 fs.stat(dbfile, function(err, stat){
     if(!stat || !stat.isFile()) {
         var tmpdb = new sqlite3.Database(dbfile);
-        tmpdb.run("CREATE TABLE words( id integer primary key autoincrement, word varchar(60) UNIQUE, us_phonetic varchar(60), uk_phonetic varchar(60), explains TEXT, us_speech TEXT, uk_speech TEXT );");
+        tmpdb.run("CREATE TABLE words( id INTEGER PRIMARY KEY AUTOINCREMENT, word VARCHAR(60) UNIQUE, us_phonetic VARCHAR(60), uk_phonetic VARCHAR(60), explains TEXT, us_speech TEXT, uk_speech TEXT, rank INTEGER, last_time INTEGER);", function (err, ret) {
+            if (!err) {
+                tmpdb.run("CREATE INDEX rank_time ON words (rank, last_time);");
+            }
+        });
     }
 });
+for(var i = 65; i < 91; i ++) {
+    var dir = String.fromCharCode(i).toLowerCase();
+    var savepath = path.join(__dirname, '/../../static/mp3/', dir);
+    mkdir(savepath);
+}
+function mkdir(dir) {
+    fs.mkdir(dir, function(err) {
+        return;
+    });
+}
 let db = new sqlite3.Database(dbfile);
 
 /**
@@ -69,14 +83,19 @@ ipcMain.on('query-word', (event, arg) => {
                 var salt = new Date().getTime();
                 var sign = md5(config.appKey + arg + salt + config.secret).toUpperCase();
                 var url = 'http://openapi.youdao.com/api?q=' + arg + '&from=EN&to=zh_CHS&appKey=' + config.appKey + '&salt=' + salt + '&sign=' + sign;
-                var url = 'http://127.0.0.1/test/tans.json';
                 var request = net.request(url);
                 request.on('response', (response) => {
                     response.on('data', (chunk) => {
                         var data = JSON.parse(`${chunk}`);
                         if (typeof(data.basic) !== 'undefined') {
-                            var res = format(arg, data.basic);
-                            event.sender.send('query-result', res)
+                            var basic = data.basic;
+                            basic.us_phonetic = basic['us-phonetic'];
+                            basic.uk_phonetic = basic['uk-phonetic'];
+                            basic.status = 0;
+                            basic.exist = false;
+                            basic.word = arg;
+                            makeVoice(basic, event);
+                            event.sender.send('query-result', basic)
                         } else {
                             event.sender.send('query-result', {status: 1, msg: '查询错误，请检查拼写是否正确'})
                         }
@@ -84,7 +103,6 @@ ipcMain.on('query-word', (event, arg) => {
                 })
                 request.end()
             } else {
-            console.log('rr', queryRes)
                 queryRes.status = 0;
                 queryRes.exist = true;
                 queryRes.explains = JSON.parse(queryRes.explains);
@@ -94,8 +112,26 @@ ipcMain.on('query-word', (event, arg) => {
     }
 })
 
+ipcMain.on('get-voice', (event, data) => {
+    makeVoice(data, event);
+})
+function makeVoice(basic, event) {
+    var first = basic.word.substr(0, 1);
+    var usfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.us.mp3');
+    var ukfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.uk.mp3');
+    basic.us_speech = usfile;
+    basic.uk_speech = ukfile;
+    var request = require('request');
+    request(basic['us-speech']).pipe(fs.createWriteStream(usfile).on('close', function () {
+        event.sender.send('voice-result', {voice: 'us', file: usfile})
+    }))
+    request(basic['uk-speech']).pipe(fs.createWriteStream(ukfile).on('close', function () {
+        event.sender.send('voice-result', {voice: 'uk', file: ukfile})
+    }))
+}
+
 ipcMain.on('add-word', (event, data) => {
-    db.run('INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?)', [
+    db.run('INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
         null,
         data['word'],
         data['us-phonetic'],
@@ -103,6 +139,8 @@ ipcMain.on('add-word', (event, data) => {
         JSON.stringify(data.explains),
         data['us-speech'],
         data['uk-speech'],
+        0,
+        0
     ], function(err,res){
         var response = {status: 0, msg: '添加成功'}
         if (err) {
@@ -119,28 +157,6 @@ ipcMain.on('add-word', (event, data) => {
     });
 })
 
-function format(word, data) {
-    var first = word.substr(0, 1);
-    var savepath = path.join(__dirname, '/../../static/mp3/', first);
-    fs.stat(savepath, function(err, stat){
-        if(!stat || !stat.isDirectory()) {
-            fs.mkdir(savepath);
-        }
-    });
-    var usfile = path.join(__dirname, '/../../static/mp3/', first, '/', word + '.us.mp3');
-    var ukfile = path.join(__dirname, '/../../static/mp3/', first, '/', word + '.uk.mp3');
-    var request = require('request');
-    request(data['us-speech']).pipe(fs.createWriteStream(usfile))
-    request(data['uk-speech']).pipe(fs.createWriteStream(ukfile))
-    data.us_phonetic = data['us-phonetic'];
-    data.uk_phonetic = data['uk-phonetic'];
-    data.us_speech = usfile;
-    data.uk_speech = ukfile;
-    data.status = 0;
-    data.exist = false;
-    data.word = word;
-    return data;
-}
 /**
  * Auto Updater
  *

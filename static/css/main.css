@@ -1,6 +1,13 @@
 body {
     background: #f5f7f9;
 }
+.ivu-menu {
+    height: 72px;
+    line-height: 72px;
+}
+.ivu-menu li {
+    font-size: 16px;
+}
 .page-main ul.ivu-menu li:first-child {
     margin-left: 100px;
 }
@@ -28,4 +35,16 @@ body {
 .sub-add {
     margin-top: 15px;
     float: right;
+}
+.start-btn {
+    width: 120px;
+    margin: 100px auto;
+}
+.demo-spin-icon-load{
+    animation: ani-demo-spin 1s linear infinite;
+}
+.load-speech .ivu-spin-fix {
+    left: -3px;
+    top: 1px;
+    background: none;
 }

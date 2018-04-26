@@ -14993,9 +14993,23 @@ var fs = __webpack_require__(8);
 fs.stat(dbfile, function (err, stat) {
     if (!stat || !stat.isFile()) {
         var tmpdb = new sqlite3.Database(dbfile);
-        tmpdb.run("CREATE TABLE words( id integer primary key autoincrement, word varchar(60) UNIQUE, us_phonetic varchar(60), uk_phonetic varchar(60), explains TEXT, us_speech TEXT, uk_speech TEXT );");
+        tmpdb.run("CREATE TABLE words( id INTEGER PRIMARY KEY AUTOINCREMENT, word VARCHAR(60) UNIQUE, us_phonetic VARCHAR(60), uk_phonetic VARCHAR(60), explains TEXT, us_speech TEXT, uk_speech TEXT, rank INTEGER, last_time INTEGER);", function (err, ret) {
+            if (!err) {
+                tmpdb.run("CREATE INDEX rank_time ON words (rank, last_time);");
+            }
+        });
     }
 });
+for (var i = 65; i < 91; i++) {
+    var dir = String.fromCharCode(i).toLowerCase();
+    var savepath = path.join(__dirname, '/../../static/mp3/', dir);
+    mkdir(savepath);
+}
+function mkdir(dir) {
+    fs.mkdir(dir, function (err) {
+        return;
+    });
+}
 var db = new sqlite3.Database(dbfile);
 
 if (process.env.NODE_ENV !== 'development') {
@@ -15043,14 +15057,19 @@ __WEBPACK_IMPORTED_MODULE_1_electron__["ipcMain"].on('query-word', function (eve
                 var salt = new Date().getTime();
                 var sign = __WEBPACK_IMPORTED_MODULE_2_js_md5___default()(config.appKey + arg + salt + config.secret).toUpperCase();
                 var url = 'http://openapi.youdao.com/api?q=' + arg + '&from=EN&to=zh_CHS&appKey=' + config.appKey + '&salt=' + salt + '&sign=' + sign;
-                var url = 'http://127.0.0.1/test/tans.json';
                 var request = __WEBPACK_IMPORTED_MODULE_1_electron__["net"].request(url);
                 request.on('response', function (response) {
                     response.on('data', function (chunk) {
                         var data = JSON.parse('' + chunk);
                         if (typeof data.basic !== 'undefined') {
-                            var res = format(arg, data.basic);
-                            event.sender.send('query-result', res);
+                            var basic = data.basic;
+                            basic.us_phonetic = basic['us-phonetic'];
+                            basic.uk_phonetic = basic['uk-phonetic'];
+                            basic.status = 0;
+                            basic.exist = false;
+                            basic.word = arg;
+                            makeVoice(basic, event);
+                            event.sender.send('query-result', basic);
                         } else {
                             event.sender.send('query-result', { status: 1, msg: '查询错误，请检查拼写是否正确' });
                         }
@@ -15058,7 +15077,6 @@ __WEBPACK_IMPORTED_MODULE_1_electron__["ipcMain"].on('query-word', function (eve
                 });
                 request.end();
             } else {
-                console.log('rr', queryRes);
                 queryRes.status = 0;
                 queryRes.exist = true;
                 queryRes.explains = JSON.parse(queryRes.explains);
@@ -15068,8 +15086,26 @@ __WEBPACK_IMPORTED_MODULE_1_electron__["ipcMain"].on('query-word', function (eve
     }
 });
 
+__WEBPACK_IMPORTED_MODULE_1_electron__["ipcMain"].on('get-voice', function (event, data) {
+    makeVoice(data, event);
+});
+function makeVoice(basic, event) {
+    var first = basic.word.substr(0, 1);
+    var usfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.us.mp3');
+    var ukfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.uk.mp3');
+    basic.us_speech = usfile;
+    basic.uk_speech = ukfile;
+    var request = __webpack_require__(135);
+    request(basic['us-speech']).pipe(fs.createWriteStream(usfile).on('close', function () {
+        event.sender.send('voice-result', { voice: 'us', file: usfile });
+    }));
+    request(basic['uk-speech']).pipe(fs.createWriteStream(ukfile).on('close', function () {
+        event.sender.send('voice-result', { voice: 'uk', file: ukfile });
+    }));
+}
+
 __WEBPACK_IMPORTED_MODULE_1_electron__["ipcMain"].on('add-word', function (event, data) {
-    db.run('INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?)', [null, data['word'], data['us-phonetic'], data['uk-phonetic'], __WEBPACK_IMPORTED_MODULE_0_babel_runtime_core_js_json_stringify___default()(data.explains), data['us-speech'], data['uk-speech']], function (err, res) {
+    db.run('INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [null, data['word'], data['us-phonetic'], data['uk-phonetic'], __WEBPACK_IMPORTED_MODULE_0_babel_runtime_core_js_json_stringify___default()(data.explains), data['us-speech'], data['uk-speech'], 0, 0], function (err, res) {
         var response = { status: 0, msg: '添加成功' };
         if (err) {
             switch (err.code) {
@@ -15084,29 +15120,6 @@ __WEBPACK_IMPORTED_MODULE_1_electron__["ipcMain"].on('add-word', function (event
         event.sender.send('add-result', response);
     });
 });
-
-function format(word, data) {
-    var first = word.substr(0, 1);
-    var savepath = path.join(__dirname, '/../../static/mp3/', first);
-    fs.stat(savepath, function (err, stat) {
-        if (!stat || !stat.isDirectory()) {
-            fs.mkdir(savepath);
-        }
-    });
-    var usfile = path.join(__dirname, '/../../static/mp3/', first, '/', word + '.us.mp3');
-    var ukfile = path.join(__dirname, '/../../static/mp3/', first, '/', word + '.uk.mp3');
-    var request = __webpack_require__(135);
-    request(data['us-speech']).pipe(fs.createWriteStream(usfile));
-    request(data['uk-speech']).pipe(fs.createWriteStream(ukfile));
-    data.us_phonetic = data['us-phonetic'];
-    data.uk_phonetic = data['uk-phonetic'];
-    data.us_speech = usfile;
-    data.uk_speech = ukfile;
-    data.status = 0;
-    data.exist = false;
-    data.word = word;
-    return data;
-}
 /* WEBPACK VAR INJECTION */}.call(__webpack_exports__, "src/main"))
 
 /***/ }),
@@ -24574,8 +24587,8 @@ module.exports = require("js-md5");
 
 var config = {
     api: 'http://openapi.youdao.com/api?q=',
-    appKey: '1ac74f47dcd672a8',
-    secret: '0DA96w1O0HkUjAts2OCPLyuruL4P4KDE'
+    appKey: '',
+    secret: ''
 };
 module.exports = config;
 

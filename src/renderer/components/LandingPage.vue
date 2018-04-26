@@ -1,10 +1,13 @@
 <template>
     <div class="page-main">
         <i-menu mode="horizontal" theme="dark" width="auto" @on-select="menu" style="-webkit-app-region: drag">
-            <Menu-item name="dashboard"><Icon type="ios-speedometer"></Icon> Dashboard</Menu-item>
-            <Menu-item name="mark"><Icon type="ios-bookmarks"></Icon> 添加生词</Menu-item>
+            <Menu-item name="dashboard"><Icon type="ios-speedometer" size="16"></Icon> Dashboard</Menu-item>
+            <Menu-item name="mark"><Icon type="ios-bookmarks" size="16"></Icon> 添加生词</Menu-item>
         </i-menu>
         <div v-if="view.dashboard">
+            <div class="start-btn">
+                <Button type="primary" icon="ios-checkmark" @click="start()" long>开始练习</Button>
+            </div>
         </div>
         <div v-if="view.mark">
             <i-form ref="formInline" :model="formInline" :rules="ruleInline" @submit.native.prevent="handleSubmit('formInline')">
@@ -29,12 +32,28 @@
             <p>
                 <Row>
                     <i-col span="12">
-                    <Button type="primary" shape="circle" size="small" icon="volume-medium" @click="voice('uk-speech')"></Button> 英  [{{ trans.uk_phonetic }}]
-                    <audio id="uk-speech" v-bind:src="trans.uk_speech"></audio>
+                        <i-col span="3">
+                            <Button v-bind:type="trans.uk_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="getVoice('uk_speech')"></Button>
+                            <audio id="uk_speech" v-bind:src="trans.uk_speech"></audio>
+                            <div class="load-speech" v-if="voice.uk_speech">
+                                <Spin fix><Icon type="load-c" size="30" class="demo-spin-icon-load"></Icon></Spin>
+                            </div>
+                        </i-col>
+                        <i-col span="20">
+                            英  [{{ trans.uk_phonetic }}]
+                        </i-col>
                     </i-col>
                     <i-col span="12">
-                    <Button type="primary" shape="circle" size="small" icon="volume-medium" @click="voice('us-speech')"></Button> 美  [{{ trans.us_phonetic }}]
-                    <audio id="us-speech" v-bind:src="trans.us_speech"></audio>
+                        <i-col span="3">
+                            <Button v-bind:type="trans.us_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="getVoice('us_speech')"></Button>
+                            <audio id="us_speech" v-bind:src="trans.us_speech"></audio>
+                            <div class="load-speech" v-if="voice.us_speech">
+                                <Spin fix><Icon type="load-c" size="30" class="demo-spin-icon-load"></Icon></Spin>
+                            </div>
+                        </i-col>
+                        <i-col span="20">
+                            美  [{{ trans.us_phonetic }}]
+                        </i-col>
                     </i-col>
                 </Row>
             </p>
@@ -63,8 +82,8 @@
                     ],
                 },
                 view: {
-                    dashboard: false,
-                    mark: true,
+                    dashboard: true,
+                    mark: false,
                     result: false,
                 },
                 trans: {
@@ -78,8 +97,28 @@
                     explains: [],
                     data: '',
                 },
+                voice: {
+                    us_speech: false,
+                    uk_speech: false,
+                },
                 onsubmit: false,
                 interval: null,
+            }
+        },
+        watch: {
+            'formInline.word': function (newVal, oldVal) {
+                this.trans.exist = false;
+                this.trans.btn = '添加到生词本';
+                this.trans.query = '';
+                this.trans.us_phonetic = '';
+                this.trans.uk_phonetic = '';
+                this.trans.us_speech = '';
+                this.trans.uk_speech = '';
+                this.trans.explains = [];
+                this.trans.data = '';
+                this.voice.us_speech= false,
+                this.voice.uk_speech= false,
+                this.view.result = false;
             }
         },
         methods: {
@@ -94,14 +133,18 @@
                     if (valid) {
                         this.onsubmit = true;
                         this.$electron.ipcRenderer.send('query-word', this.formInline.word)
-                        this.interval = setTimeout(this.checkNet, 8000);
+                        this.interval = setTimeout(this.checkNet, 30000);
                     } else {
                         this.$Message.error('请输入正确的单词');
                     }
                 })
             },
-            voice(id) {
-                document.getElementById(id).play()
+            getVoice(id) {
+                if (this.trans[id] !== '') {
+                    document.getElementById(id).play()
+                } else {
+                    this.$electron.ipcRenderer.send('get-voice', this.trans.data)
+                }
             },
             addWords() {
                 if (!this.trans.data) {
@@ -114,6 +157,9 @@
                 this.$Message.error('请求超时，请检查网络连接');
                 this.onsubmit = false;
             },
+            start() {
+
+            },
         },
         mounted () {
             this.$electron.ipcRenderer.on('query-result', (event, arg) => {
@@ -122,11 +168,11 @@
                     this.trans.query = arg.word;
                     this.trans.us_phonetic = arg.us_phonetic;
                     this.trans.uk_phonetic = arg.uk_phonetic;
-                    this.trans.us_speech = arg.us_speech;
-                    this.trans.uk_speech = arg.uk_speech;
                     this.trans.explains = arg.explains;
                     this.trans.exist = arg.exist;
                     if (arg.exist) {
+                        this.trans.us_speech = arg.us_speech;
+                        this.trans.uk_speech = arg.uk_speech;
                         this.trans.btn = '生词本已存在';
                     } else {
                         this.trans.btn = '添加到生词本';
@@ -137,6 +183,16 @@
                 }
                 clearInterval(this.interval)
                 this.onsubmit = false;
+            });
+            this.$electron.ipcRenderer.on('voice-result', (event, arg) => {
+                if (arg.voice === 'us') {
+                    this.trans.us_speech = arg.file;
+                    this.trans.data.us_speech = arg.file;
+                } else if (arg.voice === 'uk') {
+                    this.trans.data.uk_speech = arg.file;
+                    this.trans.uk_speech = arg.file;
+                }
+                console.log(this.trans.data)
             });
             this.$electron.ipcRenderer.on('add-result', (event, arg) => {
                 if (arg.status === 0) {
