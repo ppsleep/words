@@ -48,3 +48,15 @@ body {
     top: 1px;
     background: none;
 }
+.margin-t-20 {
+    margin-top: 20px;
+}
+.answer-box {
+    width: 80%;
+    background: #e9eaec;
+    border-radius: 4px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    letter-spacing:5px;
+}

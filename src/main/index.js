@@ -7,16 +7,18 @@ let config = require('../../config');
 let sqlite3 = require('sqlite3').verbose();
 var dbfile = path.join(__dirname, '/db.db');
 let fs = require('fs');
+
 fs.stat(dbfile, function(err, stat){
     if(!stat || !stat.isFile()) {
         var tmpdb = new sqlite3.Database(dbfile);
-        tmpdb.run("CREATE TABLE words( id INTEGER PRIMARY KEY AUTOINCREMENT, word VARCHAR(60) UNIQUE, us_phonetic VARCHAR(60), uk_phonetic VARCHAR(60), explains TEXT, us_speech TEXT, uk_speech TEXT, rank INTEGER, last_time INTEGER);", function (err, ret) {
+        tmpdb.run("CREATE TABLE words( id INTEGER PRIMARY KEY AUTOINCREMENT, word VARCHAR(60) UNIQUE, us_phonetic VARCHAR(60), uk_phonetic VARCHAR(60), explains TEXT, us_speech TEXT, uk_speech TEXT, rank REAL, last_time INTEGER);", function (err, ret) {
             if (!err) {
-                tmpdb.run("CREATE INDEX rank_time ON words (rank, last_time);");
+                tmpdb.run("CREATE INDEX rank_time ON words (last_time, rank);");
             }
         });
     }
 });
+let db = new sqlite3.Database(dbfile);
 for(var i = 65; i < 91; i ++) {
     var dir = String.fromCharCode(i).toLowerCase();
     var savepath = path.join(__dirname, '/../../static/mp3/', dir);
@@ -27,7 +29,6 @@ function mkdir(dir) {
         return;
     });
 }
-let db = new sqlite3.Database(dbfile);
 
 /**
  * Set `__static` path to static files in production
@@ -121,13 +122,26 @@ function makeVoice(basic, event) {
     var ukfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.uk.mp3');
     basic.us_speech = usfile;
     basic.uk_speech = ukfile;
-    var request = require('request');
-    request(basic['us-speech']).pipe(fs.createWriteStream(usfile).on('close', function () {
-        event.sender.send('voice-result', {voice: 'us', file: usfile})
-    }))
-    request(basic['uk-speech']).pipe(fs.createWriteStream(ukfile).on('close', function () {
-        event.sender.send('voice-result', {voice: 'uk', file: ukfile})
-    }))
+    fs.open(usfile, 'r', (err, fd) => {
+        if (err) {
+            var request = require('request');
+            request(basic['us-speech']).pipe(fs.createWriteStream(usfile).on('close', function () {
+                event.sender.send('voice-result', {voice: 'us', file: usfile})
+            }))
+        } else {
+            event.sender.send('voice-result', {voice: 'us', file: usfile})
+        }
+    })
+    fs.open(ukfile, 'r', (err, fd) => {
+        if (err) {
+            var request = require('request');
+            request(basic['uk-speech']).pipe(fs.createWriteStream(ukfile).on('close', function () {
+                event.sender.send('voice-result', {voice: 'uk', file: ukfile})
+            }))
+        } else {
+            event.sender.send('voice-result', {voice: 'uk', file: ukfile})
+        }
+    })
 }
 
 ipcMain.on('add-word', (event, data) => {
@@ -137,10 +151,10 @@ ipcMain.on('add-word', (event, data) => {
         data['us-phonetic'],
         data['uk-phonetic'],
         JSON.stringify(data.explains),
-        data['us-speech'],
-        data['uk-speech'],
+        data['us_speech'],
+        data['uk_speech'],
         0,
-        0
+        Date.parse( new Date()) / 1000
     ], function(err,res){
         var response = {status: 0, msg: '添加成功'}
         if (err) {
@@ -157,6 +171,55 @@ ipcMain.on('add-word', (event, data) => {
     });
 })
 
+ipcMain.on('get-question', (event, data) => {
+    var last_time = Date.parse( new Date()) / 1000 - 900;
+    db.get('SELECT * FROM words WHERE last_time < ? ORDER BY rank ASC LIMIT 1', last_time, function (err, ret) {
+        if (typeof(ret) !== 'undefined') {
+            ret.status = 0;
+            ret.explains = JSON.parse(ret.explains);
+            event.sender.send('question-result', ret); 
+        } else {
+            db.get('SELECT * FROM words WHERE 1 = 1 ORDER BY last_time ASC, rank ASC LIMIT 1', function (err, ret) {
+                if (typeof(ret) !== 'undefined') {
+                    ret.status = 0;
+                    ret.explains = JSON.parse(ret.explains);
+                    event.sender.send('question-result', ret); 
+                } else {
+                    event.sender.send('question-result', {status: 1});
+                }
+            });
+        }
+    });
+})
+ipcMain.on('question-update', (event, data) => {
+    db.get('SELECT * FROM words WHERE word = ?', data.word, function (err, ret) {
+        if (typeof(ret) !== 'undefined') {
+            var now = Date.parse( new Date()) / 1000;
+            var last_time = ret.last_time;
+            if (!last_time) {
+                last_time = now;
+            }
+            var time = now - last_time;
+            var rank = Math.atan(time);
+            var setrank = ret.rank;
+            switch (data.result) {
+                case 'right':
+                    setrank += rank;
+                    break
+                case 'help':
+                    setrank -= rank / 2;
+                    break;
+                case 'error':
+                    setrank -= rank * 2;
+                    break;
+                case 'forget':
+                    setrank -= rank * 3;
+                    break;
+            }
+            db.run('UPDATE words SET rank = ?, last_time = ? WHERE word = ?', [setrank, now, data.word]);
+        }
+    });
+})
 /**
  * Auto Updater
  *

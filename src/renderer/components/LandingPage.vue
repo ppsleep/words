@@ -4,9 +4,70 @@
             <Menu-item name="dashboard"><Icon type="ios-speedometer" size="16"></Icon> Dashboard</Menu-item>
             <Menu-item name="mark"><Icon type="ios-bookmarks" size="16"></Icon> 添加生词</Menu-item>
         </i-menu>
-        <div v-if="view.dashboard">
-            <div class="start-btn">
+        <div v-if="view.dashboard" class="result">
+            <div class="start-btn" v-if="!question.start">
                 <Button type="primary" icon="ios-checkmark" @click="start()" long>开始练习</Button>
+            </div>
+            <div v-if="question.ready">
+                <h2 class="margin-t-20">Question：</h2>
+                <div class="explains">
+                <p v-for="item in question.explains">{{ item }}</p>
+                <p v-if="question.phonetic">
+                    <Row>
+                        <i-col span="12">
+                            <i-col span="3">
+                                <Button v-bind:type="question.uk_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="playVoice('q-uk-speech')"></Button>
+                                <audio id="q-uk-speech" v-bind:src="question.uk_speech"></audio>
+                            </i-col>
+                            <i-col span="20">
+                                英  [{{ question.uk_phonetic }}]
+                            </i-col>
+                        </i-col>
+                        <i-col span="12">
+                            <i-col span="3">
+                                <Button v-bind:type="question.us_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="playVoice('q-us-speech')"></Button>
+                                <audio id="q-us-speech" v-bind:src="question.us_speech"></audio>
+                            </i-col>
+                            <i-col span="20">
+                                美  [{{ question.us_phonetic }}]
+                            </i-col>
+                        </i-col>
+                    </Row>
+                </p>
+                <h3 v-if="question.showAnswer">答案：{{ question.answer }}</h3>
+                </div>
+                <i-form @submit.native.prevent="answerSubmit()">
+                    <Row :gutter="6">
+                    <div class="margin-t-20">
+                        <i-col span="16">
+                            <FormItem>
+                                <Input type="text" style="" v-model="question.input" placeholder="请输入答案" size="large"></Input>
+                            </FormItem>
+                        </i-col>
+                        <i-col span="2">
+                            <FormItem>
+                                <Tooltip content="验证答案" placement="top">
+                                <Button type="primary" shape="circle" icon="checkmark" size="large" class="search-btn" @click="answerSubmit()"></Button>
+                                </Tooltip>
+                            </FormItem>
+                        </i-col>
+                        <i-col span="2">
+                            <FormItem>
+                                <Tooltip content="提示音标" placement="top">
+                                <Button type="success" shape="circle" icon="help" size="large" class="search-btn" @click="answerTip()"></Button>
+                                </Tooltip>
+                            </FormItem>
+                        </i-col>
+                        <i-col span="2">
+                            <FormItem>
+                                <Tooltip content="不记得了" placement="top">
+                                <Button type="error" shape="circle" icon="close" size="large" class="search-btn" @click="forget()"></Button>
+                                </Tooltip>
+                            </FormItem>
+                        </i-col>
+                    </div>
+                    </Row>
+                </i-form>
             </div>
         </div>
         <div v-if="view.mark">
@@ -26,45 +87,45 @@
                 </div>
                 </Row>
             </i-form>
-        </div>
-        <div v-if="view.result" class="result">
-            <h2>{{ trans.query }}</h2>
-            <p>
+            <div v-if="view.result" class="result">
+                <h2>{{ trans.query }}</h2>
+                <p>
+                    <Row>
+                        <i-col span="12">
+                            <i-col span="3">
+                                <Button v-bind:type="trans.uk_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="getVoice('uk_speech')"></Button>
+                                <audio id="uk_speech" v-bind:src="trans.uk_speech"></audio>
+                                <div class="load-speech" v-if="voice.uk_speech">
+                                    <Spin fix><Icon type="load-c" size="30" class="demo-spin-icon-load"></Icon></Spin>
+                                </div>
+                            </i-col>
+                            <i-col span="20">
+                                英  [{{ trans.uk_phonetic }}]
+                            </i-col>
+                        </i-col>
+                        <i-col span="12">
+                            <i-col span="3">
+                                <Button v-bind:type="trans.us_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="getVoice('us_speech')"></Button>
+                                <audio id="us_speech" v-bind:src="trans.us_speech"></audio>
+                                <div class="load-speech" v-if="voice.us_speech">
+                                    <Spin fix><Icon type="load-c" size="30" class="demo-spin-icon-load"></Icon></Spin>
+                                </div>
+                            </i-col>
+                            <i-col span="20">
+                                美  [{{ trans.us_phonetic }}]
+                            </i-col>
+                        </i-col>
+                    </Row>
+                </p>
+                <div class="explains">
+                <p v-for="item in trans.explains">{{ item }}</p>
+                </div>
                 <Row>
-                    <i-col span="12">
-                        <i-col span="3">
-                            <Button v-bind:type="trans.uk_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="getVoice('uk_speech')"></Button>
-                            <audio id="uk_speech" v-bind:src="trans.uk_speech"></audio>
-                            <div class="load-speech" v-if="voice.uk_speech">
-                                <Spin fix><Icon type="load-c" size="30" class="demo-spin-icon-load"></Icon></Spin>
-                            </div>
-                        </i-col>
-                        <i-col span="20">
-                            英  [{{ trans.uk_phonetic }}]
-                        </i-col>
-                    </i-col>
-                    <i-col span="12">
-                        <i-col span="3">
-                            <Button v-bind:type="trans.us_speech ? 'primary' : 'ghost'" shape="circle" size="small" icon="volume-medium" @click="getVoice('us_speech')"></Button>
-                            <audio id="us_speech" v-bind:src="trans.us_speech"></audio>
-                            <div class="load-speech" v-if="voice.us_speech">
-                                <Spin fix><Icon type="load-c" size="30" class="demo-spin-icon-load"></Icon></Spin>
-                            </div>
-                        </i-col>
-                        <i-col span="20">
-                            美  [{{ trans.us_phonetic }}]
-                        </i-col>
+                    <i-col span="22">
+                        <Button type="primary" :disabled="trans.exist" class="sub-add" icon="plus-circled" @click="addWords()">{{ trans.btn }}</Button>
                     </i-col>
                 </Row>
-            </p>
-            <div class="explains">
-            <p v-for="item in trans.explains">{{ item }}</p>
             </div>
-            <Row>
-                <i-col span="22">
-                    <Button type="primary" :disabled="trans.exist" class="sub-add" icon="plus-circled" @click="addWords()">{{ trans.btn }}</Button>
-                </i-col>
-            </Row>
         </div>
         <Spin fix size="large" v-if="onsubmit"></Spin>
     </div>
@@ -100,6 +161,19 @@
                 voice: {
                     us_speech: false,
                     uk_speech: false,
+                },
+                question: {
+                    start: false,
+                    explains: [],
+                    phonetic: false,
+                    us_phonetic: '',
+                    uk_phonetic: '',
+                    us_speech: '',
+                    uk_speech: '',
+                    answer: '',
+                    input: '',
+                    showAnswer: false,
+                    ready: false,
                 },
                 onsubmit: false,
                 interval: null,
@@ -146,11 +220,26 @@
                     this.$electron.ipcRenderer.send('get-voice', this.trans.data)
                 }
             },
+            playVoice(id) {
+                if (this.question[id] !== '') {
+                    var playPromise = document.getElementById(id).play();
+                    /*
+                    if (playPromise !== undefined) {
+                        playPromise.then(_ => {
+                            document.getElementById(id).pause();
+                        })
+                        .catch(error => {
+                            console.log(error)
+                        });
+                    }
+                    */
+                }
+            },
             addWords() {
                 if (!this.trans.data) {
                     this.$Message.error('请求错误，请尝试重新查询');
                 } else {
-                    this.$electron.ipcRenderer.send('add-word', this.trans.data)
+                    this.$electron.ipcRenderer.send('add-word', this.trans.data);
                 }
             },
             checkNet() {
@@ -158,7 +247,37 @@
                 this.onsubmit = false;
             },
             start() {
-
+                this.question.start = true;
+                this.question.input = '';
+                this.question.phonetic = false;
+                this.question.showAnswer = false;
+                this.$electron.ipcRenderer.send('get-question');
+            },
+            answerSubmit() {
+                if (this.question.input === this.question.answer) {
+                    this.checkAnswer(this.question.answer, 'right');
+                    var vm = this;
+                    this.$Message.success({
+                        content: '回答正确，加十分！',
+                        onClose: function (){
+                            vm.start();
+                        }
+                    });
+                    return;
+                }
+                this.checkAnswer(this.question.answer, 'error');
+                this.$Message.error('啊哦~ 回答错误~');
+            },
+            answerTip() {
+                this.question.phonetic = true;
+                this.checkAnswer(this.question.answer, 'help');
+            },
+            forget() {
+                this.question.showAnswer = true;
+                this.checkAnswer(this.question.answer, 'forget');
+            },
+            checkAnswer(word, result){
+                this.$electron.ipcRenderer.send('question-update', {word: word, result: result});
             },
         },
         mounted () {
@@ -181,7 +300,7 @@
                 } else if (arg.status === 1) {
                     this.$Message.error(arg.msg);
                 }
-                clearInterval(this.interval)
+                clearInterval(this.interval);
                 this.onsubmit = false;
             });
             this.$electron.ipcRenderer.on('voice-result', (event, arg) => {
@@ -192,7 +311,6 @@
                     this.trans.data.uk_speech = arg.file;
                     this.trans.uk_speech = arg.file;
                 }
-                console.log(this.trans.data)
             });
             this.$electron.ipcRenderer.on('add-result', (event, arg) => {
                 if (arg.status === 0) {
@@ -201,6 +319,20 @@
                 } else {
                     this.$Message.error(arg.msg);
                     this.trans.exist = false;
+                }
+            });
+            this.$electron.ipcRenderer.on('question-result', (event, arg) => {
+                if (arg.status === 1) {
+                    this.$Message.error('诶？你好像还没有添加生词~');
+                    this.question.start = false;
+                } else {
+                    this.question.explains = arg.explains;
+                    this.question.us_phonetic = arg.us_phonetic;
+                    this.question.uk_phonetic = arg.uk_phonetic;
+                    this.question.us_speech = arg.us_speech;
+                    this.question.uk_speech = arg.uk_speech;
+                    this.question.answer = arg.word;
+                    this.question.ready = true;
                 }
             });
         },
