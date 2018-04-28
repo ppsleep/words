@@ -12,5 +12,7 @@ node_modules/
 config.js
 package-lock.json
 src/main/db.db
-static/mp3/*/
-static/mp3/*/*.mp3
+src/main/voice/
+static/voice/*/
+static/voice/*/*.mp3
+build/

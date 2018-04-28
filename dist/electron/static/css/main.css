@@ -1,0 +1,62 @@
+body {
+    background: #f5f7f9;
+}
+.ivu-menu {
+    height: 72px;
+    line-height: 72px;
+}
+.ivu-menu li {
+    font-size: 16px;
+}
+.page-main ul.ivu-menu li:first-child {
+    margin-left: 100px;
+}
+.add-word {
+    width: 70%;
+    margin: 50px auto;
+}
+.result {
+    width: 70%;
+    margin: auto;
+    font-size: 14px;
+}
+.result p {
+    margin: 10px 0;
+}
+.result h2 {
+    margin-bottom: 15px;
+}
+.explains {
+    margin-top: 20px;
+}
+.search-btn {
+    float: right;
+}
+.sub-add {
+    margin-top: 15px;
+    float: right;
+}
+.start-btn {
+    width: 120px;
+    margin: 100px auto;
+}
+.demo-spin-icon-load{
+    animation: ani-demo-spin 1s linear infinite;
+}
+.load-speech .ivu-spin-fix {
+    left: -3px;
+    top: 1px;
+    background: none;
+}
+.margin-t-20 {
+    margin-top: 20px;
+}
+.answer-box {
+    width: 80%;
+    background: #e9eaec;
+    border-radius: 4px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    letter-spacing:5px;
+}

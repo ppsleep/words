@@ -5,12 +5,25 @@ import md5 from 'js-md5';
 let path = require('path');
 let config = require('../../config');
 let sqlite3 = require('sqlite3').verbose();
-var dbfile = path.join(__dirname, '/db.db');
+global.__basedir = app.getPath('userData');
+
+var dbfile = path.join(__basedir, '/db.db');
 let fs = require('fs');
 
+/**
+ * Set `__static` path to static files in production
+ * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
+ */
+if (process.env.NODE_ENV !== 'development') {
+    global.__static = path.join(__dirname, '/static').replace(/\\/g, '\\\\');
+}
+global.__voicepath = path.join(__basedir, '/voice/');
+mkdir(__voicepath);
+//dialog.showErrorBox('dir', __basedir);
 fs.stat(dbfile, function(err, stat){
     if(!stat || !stat.isFile()) {
-        var tmpdb = new sqlite3.Database(dbfile);
+        var tmpdb = new sqlite3.Database(dbfile, function (ret) {
+        });
         tmpdb.run("CREATE TABLE words( id INTEGER PRIMARY KEY AUTOINCREMENT, word VARCHAR(60) UNIQUE, us_phonetic VARCHAR(60), uk_phonetic VARCHAR(60), explains TEXT, us_speech TEXT, uk_speech TEXT, rank REAL, last_time INTEGER);", function (err, ret) {
             if (!err) {
                 tmpdb.run("CREATE INDEX rank_time ON words (last_time, rank);");
@@ -21,7 +34,7 @@ fs.stat(dbfile, function(err, stat){
 let db = new sqlite3.Database(dbfile);
 for(var i = 65; i < 91; i ++) {
     var dir = String.fromCharCode(i).toLowerCase();
-    var savepath = path.join(__dirname, '/../../static/mp3/', dir);
+    var savepath = path.join(__voicepath, dir);
     mkdir(savepath);
 }
 function mkdir(dir) {
@@ -30,13 +43,6 @@ function mkdir(dir) {
     });
 }
 
-/**
- * Set `__static` path to static files in production
- * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
- */
-if (process.env.NODE_ENV !== 'development') {
-  global.__static = path.join(__dirname, '/static').replace(/\\/g, '\\\\')
-}
 
 let mainWindow
 const winURL = process.env.NODE_ENV === 'development'
@@ -56,7 +62,7 @@ function createWindow () {
   })
 
   mainWindow.loadURL(winURL)
-
+  //mainWindow.webContents.openDevTools()
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -118,8 +124,8 @@ ipcMain.on('get-voice', (event, data) => {
 })
 function makeVoice(basic, event) {
     var first = basic.word.substr(0, 1);
-    var usfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.us.mp3');
-    var ukfile = path.join(__dirname, '/../../static/mp3/', first, '/', basic.word + '.uk.mp3');
+    var usfile = path.join(__voicepath, first, '/', basic.word + '.us.mp3');
+    var ukfile = path.join(__voicepath, first, '/', basic.word + '.uk.mp3');
     basic.us_speech = usfile;
     basic.uk_speech = ukfile;
     fs.open(usfile, 'r', (err, fd) => {
