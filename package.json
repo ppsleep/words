@@ -19,7 +19,7 @@
   },
   "build": {
     "productName": "words",
-    "appId": "org.simulatedgreg.electron-vue",
+    "appId": "info.zhaopeng.words",
     "directories": {
       "output": "build"
     },
