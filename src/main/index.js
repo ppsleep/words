@@ -44,7 +44,6 @@ function mkdir(dir) {
     });
 }
 
-
 let mainWindow
 const winURL = process.env.NODE_ENV === 'development'
   ? `http://localhost:9080`
@@ -124,7 +123,7 @@ app.on('activate', () => {
   }
 })
 ipcMain.on('query-word', (event, arg) => {
-    var reg = new RegExp(/^[a-zA-Z]+(-[a-zA-Z]+)?$/);
+    var reg = new RegExp(/^[a-zA-Z]+((-| )[a-zA-Z]+)?$/);
     if (reg.test(arg)) {
         db.get('SELECT * FROM words WHERE word = ?', arg, function(err, queryRes) {
             if (typeof(queryRes) === 'undefined') {
@@ -165,6 +164,7 @@ ipcMain.on('get-voice', (event, data) => {
 })
 function makeVoice(basic, event) {
     var first = basic.word.substr(0, 1);
+    basic.word = basic.word.replace(' ', '_');
     var usfile = path.join(__voicepath, first, '/', basic.word + '.us.mp3');
     var ukfile = path.join(__voicepath, first, '/', basic.word + '.uk.mp3');
     basic.us_speech = usfile;

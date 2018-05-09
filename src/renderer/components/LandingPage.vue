@@ -139,7 +139,7 @@
                 },
                 ruleInline: {
                     word: [
-                        { required: true, pattern: /^[a-zA-Z]+(-[a-zA-Z]+)?$/, message: '请输入要查询的单词，只支持英文单词', trigger: 'blur' },
+                        { required: true, pattern: /^[a-zA-Z]+((-| )[a-zA-Z]+)?$/, message: '请输入要查询的单词，只支持英文单词', trigger: 'blur' },
                     ],
                 },
                 view: {
