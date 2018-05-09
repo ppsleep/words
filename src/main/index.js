@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, net } from 'electron';
 import md5 from 'js-md5';
 
 // Config
@@ -7,16 +7,17 @@ let config = require('../../config');
 let sqlite3 = require('sqlite3').verbose();
 global.__basedir = app.getPath('userData');
 
-var dbfile = path.join(__basedir, '/db.db');
-let fs = require('fs');
-
 /**
  * Set `__static` path to static files in production
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
  */
 if (process.env.NODE_ENV !== 'development') {
     global.__static = path.join(__dirname, '/static').replace(/\\/g, '\\\\');
+} else {
+    global.__basedir = app.getPath('userData').replace('Electron', process.env.npm_package_name);
 }
+var dbfile = path.join(__basedir, '/db.db');
+let fs = require('fs');
 global.__voicepath = path.join(__basedir, '/voice/');
 mkdir(__voicepath);
 //dialog.showErrorBox('dir', __basedir);
@@ -66,6 +67,47 @@ function createWindow () {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+if (process.platform === 'darwin') {
+    var template = [{
+      label: 'FromScratch',
+      submenu: [{
+        label: 'Quit',
+        accelerator: 'CmdOrCtrl+Q',
+        click: function() { app.quit(); }
+      }]
+    }, {
+      label: 'Edit',
+      submenu: [{
+        label: 'Undo',
+        accelerator: 'CmdOrCtrl+Z',
+        selector: 'undo:'
+      }, {
+        label: 'Redo',
+        accelerator: 'Shift+CmdOrCtrl+Z',
+        selector: 'redo:'
+      }, {
+        type: 'separator'
+      }, {
+        label: 'Cut',
+        accelerator: 'CmdOrCtrl+X',
+        selector: 'cut:'
+      }, {
+        label: 'Copy',
+        accelerator: 'CmdOrCtrl+C',
+        selector: 'copy:'
+      }, {
+        label: 'Paste',
+        accelerator: 'CmdOrCtrl+V',
+        selector: 'paste:'
+      }, {
+        label: 'Select All',
+        accelerator: 'CmdOrCtrl+A',
+        selector: 'selectAll:'
+      }]
+    }];
+    var osxMenu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(osxMenu);
+}
 }
 
 app.on('ready', createWindow)
@@ -81,7 +123,6 @@ app.on('activate', () => {
     createWindow()
   }
 })
-
 ipcMain.on('query-word', (event, arg) => {
     var reg = new RegExp(/^[a-zA-Z]+(-[a-zA-Z]+)?$/);
     if (reg.test(arg)) {

@@ -4,6 +4,7 @@ body {
 .ivu-menu {
     height: 72px;
     line-height: 72px;
+    -webkit-user-select: none;
 }
 .ivu-menu li {
     font-size: 16px;
