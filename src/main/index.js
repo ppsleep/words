@@ -223,13 +223,16 @@ ipcMain.on('get-question', (event, data) => {
     db.get('SELECT * FROM words WHERE last_time < ? ORDER BY rank ASC LIMIT 1', last_time, function (err, ret) {
         if (typeof(ret) !== 'undefined') {
             ret.status = 0;
+            ret.explains = ret.explains.replace(/\((\w+)\)/, "(****)");
             ret.explains = JSON.parse(ret.explains);
             event.sender.send('question-result', ret); 
         } else {
             db.get('SELECT * FROM words WHERE 1 = 1 ORDER BY last_time ASC, rank ASC LIMIT 1', function (err, ret) {
                 if (typeof(ret) !== 'undefined') {
                     ret.status = 0;
+                    ret.explains = ret.explains.replace(/\((\w+)\)/, "(****)");
                     ret.explains = JSON.parse(ret.explains);
+
                     event.sender.send('question-result', ret); 
                 } else {
                     event.sender.send('question-result', {status: 1});
