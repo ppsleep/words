@@ -122,7 +122,12 @@
                 </div>
                 <Row>
                     <i-col span="22">
+                        <div class="sub-btn-group">
                         <Button type="primary" :disabled="trans.exist" class="sub-add" icon="plus-circled" @click="addWords()">{{ trans.btn }}</Button>
+                        <Poptip confirm title="确定要删除吗？" @on-ok="delWords">
+                        <Button type="error" :disabled="trans.deleted" v-if="trans.exist" class="sub-add" icon="trash-a">删除</Button>
+                        </Poptip>
+                        </div>
                     </i-col>
                 </Row>
             </div>
@@ -149,6 +154,7 @@
                 },
                 trans: {
                     exist: false,
+                    deleted: false,
                     btn: '添加到生词本',
                     query: '',
                     us_phonetic: '',
@@ -242,6 +248,9 @@
                     this.$electron.ipcRenderer.send('add-word', this.trans.data);
                 }
             },
+            delWords() {
+                this.$electron.ipcRenderer.send('del-word', this.trans.data.id);
+            },
             checkNet() {
                 this.$Message.error('请求超时，请检查网络连接');
                 this.onsubmit = false;
@@ -320,6 +329,10 @@
                     this.$Message.error(arg.msg);
                     this.trans.exist = false;
                 }
+            });
+            this.$electron.ipcRenderer.on('del-result', (event, arg) => {
+                this.$Message.success("删除成功");
+                this.trans.deleted = true;
             });
             this.$electron.ipcRenderer.on('question-result', (event, arg) => {
                 if (arg.status === 1) {

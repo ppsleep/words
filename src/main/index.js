@@ -218,6 +218,24 @@ ipcMain.on('add-word', (event, data) => {
     });
 })
 
+ipcMain.on('del-word', (event, data) => {
+    db.get('SELECT * FROM words WHERE id = ?', data, function(err, queryRes) {
+        if (typeof(queryRes) !== 'undefined') {
+            db.run('DELETE FROM words WHERE id = ?', data, function(err,res) {
+                if (!err) {
+                    event.sender.send('del-result', true);
+                    var us = path.join(__basedir, queryRes.us_speech.replace(__basedir, ''));
+                    var uk = path.join(__basedir, queryRes.uk_speech.replace(__basedir, ''));
+                    fs.unlink(us)
+                    fs.unlink(uk)
+                    return
+                }
+            })
+        }
+    })
+    event.sender.send('del-result', false);
+})
+
 ipcMain.on('get-question', (event, data) => {
     var last_time = Date.parse( new Date()) / 1000 - 900;
     db.get('SELECT * FROM words WHERE last_time < ? ORDER BY rank ASC LIMIT 1', last_time, function (err, ret) {

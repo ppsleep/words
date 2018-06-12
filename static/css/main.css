@@ -35,6 +35,8 @@ body {
 }
 .sub-add {
     margin-top: 15px;
+}
+.sub-btn-group {
     float: right;
 }
 .start-btn {
