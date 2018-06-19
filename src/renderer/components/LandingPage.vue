@@ -122,11 +122,11 @@
                 </div>
                 <Row>
                     <i-col span="22">
-                        <div class="sub-btn-group">
-                        <Button type="primary" :disabled="trans.exist" class="sub-add" icon="plus-circled" @click="addWords()">{{ trans.btn }}</Button>
                         <Poptip confirm title="确定要删除吗？" @on-ok="delWords">
                         <Button type="error" :disabled="trans.deleted" v-if="trans.exist" class="sub-add" icon="trash-a">删除</Button>
                         </Poptip>
+                        <div class="sub-btn-group">
+                        <Button type="primary" :disabled="trans.exist" class="sub-add" icon="plus-circled" @click="addWords()">{{ trans.btn }}</Button>
                         </div>
                     </i-col>
                 </Row>
